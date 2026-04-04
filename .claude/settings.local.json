@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s https://yuwfwopyujbnfncscqkz.supabase.co/rest/v1/categories -H 'apikey: sb_publishable_gtPr3-VjBYKEIJoU-IbT3Q_teL_mg56' -H 'Authorization: Bearer sb_publishable_gtPr3-VjBYKEIJoU-IbT3Q_teL_mg56' -H 'Accept: application/json')"
+    ]
+  }
+}
