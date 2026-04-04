@@ -3,7 +3,7 @@ import { ShoppingCart, X, Plus, Minus, Trash2, Send } from "lucide-react";
 import { formatPrice } from "../data/helpers";
 import { supabase } from "../lib/supabase";
 
-const ADMIN_WHATSAPP = "905551234567"; // Mağaza WhatsApp numarası
+const ADMIN_WHATSAPP = "905385579081"; // Mağaza WhatsApp numarası
 
 export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
   const [orderForm, setOrderForm] = useState(false);

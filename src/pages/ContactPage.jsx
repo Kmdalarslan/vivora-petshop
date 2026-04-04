@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Phone, MapPin, Clock, MessageCircle } from "lucide-react";
+import { MapPin, Clock, MessageCircle } from "lucide-react";
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
 
   const contactInfo = [
-    { icon: <Phone size={18} />, label: "Telefon", value: "+90 555 123 4567", color: "#10B981" },
-    { icon: <MapPin size={18} />, label: "Adres", value: "Ataşehir, İstanbul", color: "#0EA5E9" },
-    { icon: <Clock size={18} />, label: "Çalışma Saatleri", value: "Her gün 09:00 - 21:00", color: "#F59E0B" },
-    { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "+90 555 123 4567", color: "#25D366" },
+    { icon: <MapPin size={18} />, label: "Adres", value: "Kayseri, Yunus Emre Mahallesi", color: "#0EA5E9" },
+    { icon: <Clock size={18} />, label: "Çalışma Saatleri", value: "Her gün 09:00 - 18:00", color: "#F59E0B" },
+    { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "+90 538 557 9081", color: "#25D366" },
   ];
 
   return (
