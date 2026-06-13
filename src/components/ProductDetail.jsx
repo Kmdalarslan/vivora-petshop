@@ -1,15 +1,43 @@
-import { useState } from "react";
-import { Star, Plus, Minus, ArrowLeft, ShoppingCart, Truck, Shield, Award } from "lucide-react";
+import { useState, useRef } from "react";
+import { Star, Plus, Minus, ArrowLeft, ShoppingCart, Truck, Shield, Award, ZoomIn } from "lucide-react";
+
+const COLORS = {
+  primaryRed: "#E31E24",
+  primaryBlue: "#123E85",
+};
 
 export default function ProductDetail({ product, categories = [], onClose, onAdd }) {
   const [qty, setQty] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [showZoomTip, setShowZoomTip] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const imgContainerRef = useRef(null);
   const cat = categories.find((c) => c.id === product.category_id);
 
   const price = product.sell_price ?? product.price ?? 0;
   const oldPrice = product.old_price ?? product.oldPrice ?? null;
-  const imgSrc = product.img;
+  const imgSrc = product.image_url || product.img;
   const isUrl = imgSrc && (imgSrc.startsWith("http") || imgSrc.startsWith("/"));
   const desc = product.description ?? product.desc ?? "";
+
+  const handleImageClick = () => {
+    if (zoomLevel >= 3) {
+      setZoomLevel(1);
+    } else {
+      setZoomLevel(prev => prev + 1);
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (!imgContainerRef.current) return;
+    const rect = imgContainerRef.current.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
+  const zoomLabels = { 1: "Yakınlaştır", 2: "2x Zoom", 3: "3x Zoom" };
 
   return (
     <div
@@ -43,7 +71,7 @@ export default function ProductDetail({ product, categories = [], onClose, onAdd
           </button>
           {cat && (
             <span style={{
-              fontSize: 11, color: "#0EA5E9", fontWeight: 700,
+              fontSize: 11, color: COLORS.primaryBlue, fontWeight: 700,
               background: "#E0F2FE", padding: "6px 14px",
               borderRadius: 20, alignSelf: "center",
             }}>
@@ -52,20 +80,70 @@ export default function ProductDetail({ product, categories = [], onClose, onAdd
           )}
         </div>
 
-        {/* Ürün resmi */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          height: 200, background: "linear-gradient(180deg,#E0F7FA,transparent)",
-          overflow: "hidden",
-        }}>
+        {/* Ürün resmi - Büyüteç özellikli */}
+        <div
+          ref={imgContainerRef}
+          onClick={isUrl ? handleImageClick : undefined}
+          onMouseEnter={() => isUrl && setShowZoomTip(true)}
+          onMouseLeave={() => { setShowZoomTip(false); setZoomLevel(1); }}
+          onMouseMove={handleMouseMove}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            height: 320, background: "#fafafa",
+            overflow: "hidden", padding: 16,
+            position: "relative",
+            cursor: isUrl ? "zoom-in" : "default",
+          }}
+        >
           {isUrl ? (
             <img
               src={imgSrc}
               alt={product.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              style={{
+                maxWidth: "100%", maxHeight: "100%", objectFit: "contain",
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: imgContainerRef.current
+                  ? `${(mousePos.x / imgContainerRef.current.offsetWidth) * 100}% ${(mousePos.y / imgContainerRef.current.offsetHeight) * 100}%`
+                  : "center center",
+                transition: "transform 0.3s ease",
+              }}
             />
           ) : (
             <span style={{ fontSize: 100 }}>{imgSrc || "📦"}</span>
+          )}
+
+          {/* Büyüteç ikonu + yazı (fare yanında) */}
+          {isUrl && showZoomTip && (
+            <div style={{
+              position: "absolute",
+              left: Math.min(mousePos.x + 16, (imgContainerRef.current?.offsetWidth || 300) - 110),
+              top: Math.min(mousePos.y - 12, (imgContainerRef.current?.offsetHeight || 320) - 30),
+              background: "rgba(0,0,0,0.75)",
+              color: "#fff",
+              fontSize: 11, fontWeight: 700,
+              padding: "5px 12px",
+              borderRadius: 6,
+              display: "flex", alignItems: "center", gap: 5,
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+              zIndex: 5,
+              transition: "left 0.05s, top 0.05s",
+            }}>
+              <ZoomIn size={13} />
+              {zoomLevel >= 3 ? "Sıfırla" : zoomLabels[zoomLevel]}
+            </div>
+          )}
+
+          {/* Zoom seviye göstergesi */}
+          {zoomLevel > 1 && (
+            <div style={{
+              position: "absolute", bottom: 8, right: 8,
+              background: COLORS.primaryRed,
+              color: "#fff", fontSize: 11, fontWeight: 800,
+              padding: "4px 10px", borderRadius: 4, zIndex: 5,
+            }}>
+              {zoomLevel}x
+            </div>
           )}
         </div>
 
@@ -74,9 +152,11 @@ export default function ProductDetail({ product, categories = [], onClose, onAdd
           {product.badge && (
             <span style={{
               display: "inline-block",
-              background: "linear-gradient(135deg,#8B5CF6,#EC4899)",
+              background: product.badge === "Kampanya" ? COLORS.primaryRed
+                : product.badge === "Yeni" ? "#2DC00F"
+                : COLORS.primaryBlue,
               color: "#fff", fontSize: 11, fontWeight: 700,
-              padding: "4px 12px", borderRadius: 8, marginBottom: 8,
+              padding: "4px 12px", borderRadius: 6, marginBottom: 8,
             }}>
               {product.badge}
             </span>
@@ -139,7 +219,7 @@ export default function ProductDetail({ product, categories = [], onClose, onAdd
                   {(oldPrice * qty).toLocaleString("tr-TR")} ₺
                 </p>
               )}
-              <p style={{ fontSize: 22, fontWeight: 800, color: "#0EA5E9", margin: 0 }}>
+              <p style={{ fontSize: 22, fontWeight: 800, color: COLORS.primaryRed, margin: 0 }}>
                 {(price * qty).toLocaleString("tr-TR")} ₺
               </p>
             </div>
@@ -150,20 +230,34 @@ export default function ProductDetail({ product, categories = [], onClose, onAdd
             onClick={() => { onAdd(product, qty); onClose(); }}
             style={{
               width: "100%", padding: "16px",
-              background: "linear-gradient(135deg,#0EA5E9,#06B6D4)",
-              color: "#fff", border: "none", borderRadius: 16,
+              background: COLORS.primaryRed,
+              color: "#fff", border: "none", borderRadius: 12,
               fontSize: 16, fontWeight: 700, cursor: "pointer",
-              boxShadow: "0 8px 24px rgba(14,165,233,0.3)",
+              boxShadow: "0 8px 24px rgba(227,30,36,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
             <ShoppingCart size={20} /> Sepete Ekle
           </button>
 
+          {/* Ücretsiz Kargo Bilgisi */}
+          {product.free_shipping !== false && (
+            <div style={{
+              background: "#F0FDF4", border: "1px solid #BBF7D0",
+              borderRadius: 10, padding: "10px 14px", marginTop: 16,
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <Truck size={16} color="#059669" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#059669" }}>
+                1.250₺ üzeri siparişlerde ücretsiz kargo!
+              </span>
+            </div>
+          )}
+
           {/* Güvence ikonları */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 20 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 16 }}>
             {[
-              ["Ücretsiz Kargo", <Truck size={16} key="t" />],
+              ...(product.free_shipping !== false ? [["Ücretsiz Kargo", <Truck size={16} key="t" />]] : []),
               ["Güvenli Ödeme", <Shield size={16} key="s" />],
               ["Kalite Garantisi", <Award size={16} key="a" />],
             ].map(([text, icon], i) => (

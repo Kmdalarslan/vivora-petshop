@@ -5,17 +5,18 @@ import { supabase } from "../lib/supabase";
 
 const ADMIN_WHATSAPP = "905385579081"; // Mağaza WhatsApp numarası
 
-export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
+export default function CartPanel({ cart, onClose, onUpdate, onRemove, member }) {
   const [orderForm, setOrderForm] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(member?.name || "");
+  const [phone, setPhone] = useState(member?.phone || "");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const subtotal = cart.reduce((s, i) => s + (i.sell_price || 0) * i.qty, 0);
+  const memberDiscount = member ? subtotal * 0.10 : 0;
   const shipping = subtotal > 500 ? 0 : 29.9;
-  const total = subtotal + shipping;
+  const total = subtotal - memberDiscount + shipping;
 
   const handleOrder = async () => {
     if (!name.trim() || !phone.trim()) return;
@@ -28,18 +29,17 @@ export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
       price: i.sell_price || 0,
     }));
 
-    // Supabase orders tablosuna kaydet (tablo yoksa sessizce geç)
-    await supabase
-      .from("orders")
-      .insert({
+    // Supabase orders tablosuna kaydet
+    try {
+      await supabase.from("orders").insert({
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         items,
         total,
         note: note.trim() || null,
         status: "Bekliyor",
-      })
-      .catch(() => {});
+      });
+    } catch (e) { /* tablo yoksa sessizce geç */ }
 
     // WhatsApp mesajı oluştur ve gönder
     const itemsText = cart
@@ -276,7 +276,7 @@ export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
                         <img
                           src={item.img}
                           alt={item.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
                           onError={(e) => { e.target.style.display = "none"; }}
                         />
                       ) : (
@@ -341,6 +341,12 @@ export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
                 <span style={{ color: "#64748B", fontSize: 14 }}>Ara Toplam</span>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>{formatPrice(subtotal)}</span>
               </div>
+              {member && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ color: "#F59E0B", fontSize: 14, fontWeight: 600 }}>Üye İndirimi (%10)</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#F59E0B" }}>-{formatPrice(memberDiscount)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ color: "#64748B", fontSize: 14 }}>Kargo</span>
                 <span style={{ fontWeight: 600, fontSize: 14, color: "#10B981" }}>
@@ -366,7 +372,7 @@ export default function CartPanel({ cart, onClose, onUpdate, onRemove }) {
                 Sipariş Ver →
               </button>
               <p style={{ textAlign: "center", fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
-                500₺ üzeri siparişlerde ücretsiz kargo!
+                1250₺ üzeri siparişlerde ücretsiz kargo!
               </p>
             </div>
           </>
