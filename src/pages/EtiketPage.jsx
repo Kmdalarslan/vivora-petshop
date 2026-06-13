@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, Trash2, Printer, ArrowLeft, Fish, Loader2, Download } from "lucide-react";
+import { Search, Plus, Trash2, Printer, ArrowLeft, Fish, Loader2, Download, PlusCircle, X } from "lucide-react";
 import html2pdf from "html2pdf.js";
 import baliklar from "../data/baliklar";
 
@@ -177,13 +177,19 @@ export default function EtiketPage({ onBack }) {
   const [resim, setResim] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(false);
   const [liste, setListe] = useLocalStorage("vivora-etiket-liste", []);
+  const [ozelBaliklar, setOzelBaliklar] = useLocalStorage("vivora-ozel-baliklar", []);
+  const [ozelForm, setOzelForm] = useState(false);
+  const [ozelAd, setOzelAd] = useState("");
+  const [ozelBilimsel, setOzelBilimsel] = useState("");
+
+  const tumBaliklar = [...baliklar, ...ozelBaliklar];
 
   const filtreli = arama.trim()
-    ? baliklar.filter(b =>
+    ? tumBaliklar.filter(b =>
         b.ad.toLowerCase().includes(arama.toLowerCase()) ||
         b.bilimsel.toLowerCase().includes(arama.toLowerCase())
       )
-    : baliklar;
+    : tumBaliklar;
 
   // Wikimedia resim çek
   useEffect(() => {
@@ -255,6 +261,47 @@ export default function EtiketPage({ onBack }) {
               onChange={e => setArama(e.target.value)}
             />
           </div>
+          {/* Özel balık ekle */}
+          {!ozelForm ? (
+            <button
+              onClick={() => setOzelForm(true)}
+              style={{ width: "100%", marginTop: 8, padding: "8px 12px", background: "#fff", border: "1.5px dashed #ccc", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, color: "#666", fontFamily: "'DM Sans', sans-serif" }}
+            >
+              <PlusCircle size={15} /> Özel Balık Ekle
+            </button>
+          ) : (
+            <div style={{ marginTop: 8, padding: 12, background: "#fff", border: "1.5px solid #ddd", borderRadius: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>Yeni Balık</span>
+                <button onClick={() => { setOzelForm(false); setOzelAd(""); setOzelBilimsel(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#999" }}><X size={16} /></button>
+              </div>
+              <input
+                placeholder="Balık adı (ör: Blue Dragon)"
+                value={ozelAd}
+                onChange={e => setOzelAd(e.target.value)}
+                style={{ ...S.input, marginBottom: 6, fontSize: 13 }}
+              />
+              <input
+                placeholder="Bilimsel isim (opsiyonel)"
+                value={ozelBilimsel}
+                onChange={e => setOzelBilimsel(e.target.value)}
+                style={{ ...S.input, marginBottom: 8, fontSize: 13 }}
+              />
+              <button
+                onClick={() => {
+                  if (!ozelAd.trim()) return;
+                  const yeni = { ad: ozelAd.trim(), bilimsel: ozelBilimsel.trim() || "-", ozel: true };
+                  setOzelBaliklar(prev => [...prev, yeni]);
+                  setSecili(yeni);
+                  setOzelAd(""); setOzelBilimsel(""); setOzelForm(false);
+                }}
+                style={{ width: "100%", padding: "7px 12px", background: "#000", color: "#fff", border: "none", borderRadius: 6, fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Ekle
+              </button>
+            </div>
+          )}
+
           <ul style={S.list}>
             {filtreli.map((b, i) => (
               <li
@@ -265,7 +312,16 @@ export default function EtiketPage({ onBack }) {
                 }}
                 onClick={() => setSecili(b)}
               >
-                <span style={{ fontWeight: 500, fontSize: 14 }}>{b.ad}</span>
+                <span style={{ fontWeight: 500, fontSize: 14, display: "flex", alignItems: "center", gap: 4 }}>
+                  {b.ad}
+                  {b.ozel && <span style={{ fontSize: 9, background: "#eee", borderRadius: 3, padding: "1px 4px", color: "#888" }}>özel</span>}
+                  {b.ozel && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setOzelBaliklar(prev => prev.filter(p => p.ad !== b.ad || p.bilimsel !== b.bilimsel)); if (secili?.ad === b.ad) setSecili(null); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#ccc", marginLeft: "auto", padding: 0 }}
+                    ><Trash2 size={12} /></button>
+                  )}
+                </span>
                 <span style={{ fontSize: 11, color: "#888", fontStyle: "italic" }}>{b.bilimsel}</span>
               </li>
             ))}
