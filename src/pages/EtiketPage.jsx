@@ -55,7 +55,7 @@ function Etiket({ item }) {
         fontFamily: "'DM Sans', sans-serif", fontWeight: 300,
         fontSize: 22, color: "#000", lineHeight: 1,
       }}>{Number(item.fiyat).toFixed(0)}</div>
-      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 7, color: "#666" }}>₺/adet</div>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 7, color: "#666" }}>₺/{item.birim || "adet"}</div>
     </div>
   );
 }
@@ -81,7 +81,7 @@ function printEtiketler(liste) {
       <div class="bil">${esc(item.bilimsel)}</div>
       <div class="ayrac">••••••••••••••••••••</div>
       <div class="fiyat">${Number(item.fiyat).toFixed(0)}</div>
-      <div class="birim">₺/adet</div>
+      <div class="birim">₺/${esc(item.birim || "adet")}</div>
     </div>
   `).join("");
 
@@ -150,7 +150,7 @@ function pdfIndir(liste) {
           <div class="pdf-bil">${esc(item.bilimsel)}</div>
           <div class="pdf-ayrac">••••••••••••••••••••</div>
           <div class="pdf-fiyat">${Number(item.fiyat).toFixed(0)}</div>
-          <div class="pdf-birim">₺/adet</div>
+          <div class="pdf-birim">₺/${esc(item.birim || "adet")}</div>
         </div>
       `).join("")}
     </div>`;
@@ -174,6 +174,7 @@ export default function EtiketPage({ onBack }) {
   const [arama, setArama] = useState("");
   const [secili, setSecili] = useState(null);
   const [fiyat, setFiyat] = useState("");
+  const [birim, setBirim] = useState("adet");
   const [resim, setResim] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(false);
   const [liste, setListe] = useLocalStorage("vivora-etiket-liste", []);
@@ -207,8 +208,9 @@ export default function EtiketPage({ onBack }) {
   const handleEkle = () => {
     const f = parseFloat(fiyat);
     if (!secili || !f || f <= 0) return;
-    setListe(prev => [...prev, { ad: secili.ad, bilimsel: secili.bilimsel, fiyat: f }]);
+    setListe(prev => [...prev, { ad: secili.ad, bilimsel: secili.bilimsel, fiyat: f, birim }]);
     setFiyat("");
+    setBirim("adet");
   };
 
   const handleSil = (i) => setListe(prev => prev.filter((_, idx) => idx !== i));
@@ -355,6 +357,16 @@ export default function EtiketPage({ onBack }) {
                     onKeyDown={e => e.key === "Enter" && handleEkle()}
                     style={{ ...S.input, width: 120 }}
                   />
+                  <select
+                    value={birim} onChange={e => setBirim(e.target.value)}
+                    style={{ ...S.input, width: 90, cursor: "pointer" }}
+                  >
+                    <option value="adet">Adet</option>
+                    <option value="çift">Çift</option>
+                    <option value="zeri">Zeri</option>
+                    <option value="düzine">Düzine</option>
+                    <option value="kg">Kg</option>
+                  </select>
                   <button onClick={handleEkle} style={S.btn}>
                     <Plus size={16} /> Ekle
                   </button>
@@ -397,7 +409,17 @@ export default function EtiketPage({ onBack }) {
                       onChange={e => handleGuncelle(i, parseFloat(e.target.value))}
                       style={{ width: 80, padding: "4px 8px", border: "1px solid #ccc", borderRadius: 4, textAlign: "right", fontFamily: "'DM Sans', sans-serif" }}
                     />
-                    <span style={{ fontSize: 13, color: "#666" }}>₺</span>
+                    <select
+                      value={item.birim || "adet"}
+                      onChange={e => setListe(prev => prev.map((it, idx) => idx === i ? { ...it, birim: e.target.value } : it))}
+                      style={{ padding: "4px 6px", border: "1px solid #ccc", borderRadius: 4, fontSize: 12, fontFamily: "'DM Sans', sans-serif", cursor: "pointer" }}
+                    >
+                      <option value="adet">₺/Adet</option>
+                      <option value="çift">₺/Çift</option>
+                      <option value="zeri">₺/Zeri</option>
+                      <option value="düzine">₺/Düzine</option>
+                      <option value="kg">₺/Kg</option>
+                    </select>
                     <button onClick={() => handleSil(i)} style={S.btnSm} title="Sil">
                       <Trash2 size={16} />
                     </button>
