@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, Trash2, Printer, ArrowLeft, Fish, Loader2, Download, PlusCircle, X } from "lucide-react";
-import html2pdf from "html2pdf.js";
 import baliklar from "../data/baliklar";
 
 // ─── localStorage hook ───
@@ -67,106 +66,121 @@ function esc(str) {
   return d.innerHTML;
 }
 
-// ─── Print fonksiyonu ───
-function printEtiketler(liste) {
-  const win = window.open("", "_blank");
-  if (!win) return alert("Popup engellenmiş, lütfen izin verin.");
+// ─── Etiket sayfası HTML üretici ───
+function etiketSayfasiHTML(liste) {
+  // A4: 210x297mm, margin 15mm her yönden = kullanılabilir alan 180x267mm
+  // Etiket: 70x40mm, gap: 8mm
+  // Satır başına 3 etiket: 70*3 + 8*2 = 226 > 180 → 2 sütun daha iyi
+  // Ama 70*3=210, gap dahil 70+8+70+8+70=226... margin düşünce 2 sütun
+  // Aslında 15mm margin ile: 210-30=180mm alan, 70*2+8=148 veya 70+8+70+8+70=226>180
+  // 2 sütun: 70+8+70=148mm ✓ (180mm alana sığar)
+  // 3 sütun: sadece margin 10mm ile: 210-20=190, 70+5+70+5+70=220>190 → sığmaz
+  // 2 sütun kullanacağız, düzgün sığsın
 
-  const html = liste.map(item => `
+  // Her sayfaya kaç etiket sığar: 267mm yükseklik / (40+8)mm = 5.56 → 5 satır
+  // 2 sütun x 5 satır = 10 etiket/sayfa
+  const perPage = 10;
+  const cols = 2;
+  const pages = [];
+  for (let i = 0; i < liste.length; i += perPage) {
+    pages.push(liste.slice(i, i + perPage));
+  }
+
+  const etiketHTML = (item) => `
     <div class="etiket">
       <div class="c c-tl"></div><div class="c c-tr"></div>
       <div class="c c-bl"></div><div class="c c-br"></div>
       <div class="ust"><span class="line"></span><span class="dia">&#9670;</span><span class="line"></span></div>
       <div class="ad">${esc(item.ad)}</div>
       <div class="bil">${esc(item.bilimsel)}</div>
-      <div class="ayrac">••••••••••••••••••••</div>
+      <div class="ayrac">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</div>
       <div class="fiyat">${Number(item.fiyat).toFixed(0)}</div>
-      <div class="birim">₺/${esc(item.birim || "adet")}</div>
-    </div>
-  `).join("");
+      <div class="birim">&#8378;/${esc(item.birim || "adet")}</div>
+    </div>`;
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  const pagesHTML = pages.map(p => `
+    <div class="sayfa">
+      <div class="grid">${p.map(etiketHTML).join("")}</div>
+    </div>`).join("");
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>Vivora Petshop - Fiyat Etiketleri</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-@page{size:A4;margin:15mm}
-body{font-family:'DM Sans',sans-serif}
-.grid{display:grid;grid-template-columns:repeat(3,70mm);gap:8mm;justify-content:center}
-.etiket{width:70mm;height:40mm;border:1.5px solid #000;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:3mm;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.c{position:absolute;width:8mm;height:8mm;background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4 portrait;margin:0}
+body{font-family:'DM Sans',sans-serif;background:#fff}
+.sayfa{
+  width:210mm;height:297mm;
+  padding:15mm;
+  display:flex;align-items:flex-start;justify-content:center;
+  page-break-after:always;
+  overflow:hidden;
+}
+.sayfa:last-child{page-break-after:auto}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(${cols},70mm);
+  grid-auto-rows:40mm;
+  gap:8mm;
+}
+.etiket{
+  width:70mm;height:40mm;
+  border:1.5px solid #000;
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;padding:3mm;
+  background:#fff;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.c{position:absolute;width:7mm;height:7mm;background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .c-tl{top:0;left:0;clip-path:polygon(0 0,100% 0,0 100%)}
 .c-tr{top:0;right:0;clip-path:polygon(0 0,100% 0,100% 100%)}
 .c-bl{bottom:0;left:0;clip-path:polygon(0 0,0 100%,100% 100%)}
 .c-br{bottom:0;right:0;clip-path:polygon(100% 0,0 100%,100% 100%)}
-.ust{display:flex;align-items:center;gap:2mm;margin-bottom:1.5mm;width:80%}
-.line{flex:1;height:.5px;background:#000}
-.dia{font-size:6px;color:#000}
-.ad{font-family:'Playfair Display',serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1px}
-.bil{font-family:'Playfair Display',serif;font-style:italic;font-size:8px;color:#666;margin-bottom:1mm}
-.ayrac{font-size:5px;color:#999;letter-spacing:2px;margin:1mm 0}
-.fiyat{font-family:'DM Sans',sans-serif;font-weight:300;font-size:22px;line-height:1}
-.birim{font-family:'DM Sans',sans-serif;font-size:7px;color:#666}
-</style></head><body>
-<div class="grid">${html}</div>
-<script>
-document.fonts.ready.then(function(){
-  setTimeout(function(){ window.print(); }, 300);
-});
-<\/script>
-</body></html>`);
+.ust{display:flex;align-items:center;gap:2mm;margin-bottom:1mm;width:75%}
+.line{flex:1;height:0.5px;background:#000}
+.dia{font-size:5px;color:#000}
+.ad{font-family:'Playfair Display',serif;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#000;text-align:center;line-height:1.2;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bil{font-family:'Playfair Display',serif;font-style:italic;font-size:7px;color:#666;margin-bottom:0.5mm;text-align:center}
+.ayrac{font-size:4px;color:#aaa;letter-spacing:1.5px;margin:0.5mm 0}
+.fiyat{font-family:'DM Sans',sans-serif;font-weight:300;font-size:20px;color:#000;line-height:1}
+.birim{font-family:'DM Sans',sans-serif;font-size:6px;color:#666}
+</style></head><body>${pagesHTML}</body></html>`;
+}
+
+// ─── Yazdır ───
+function printEtiketler(liste) {
+  const win = window.open("", "_blank");
+  if (!win) return alert("Popup engellenmiş, lütfen izin verin.");
+  const html = etiketSayfasiHTML(liste);
+  win.document.write(html + `<script>
+    document.fonts.ready.then(function(){
+      setTimeout(function(){ window.print(); }, 500);
+    });
+  <\/script>`);
   win.document.close();
 }
 
-// ─── PDF İndirme ───
+// ─── PDF olarak kaydet (aynı pencere, kullanıcı PDF seçer) ───
 function pdfIndir(liste) {
-  const container = document.createElement("div");
-  container.style.cssText = "position:absolute;left:-9999px;top:0";
-  container.innerHTML = `
-    <style>
-      .pdf-grid{display:grid;grid-template-columns:repeat(3,70mm);gap:8mm;justify-content:center;padding:15mm}
-      .pdf-etiket{width:70mm;height:40mm;border:1.5px solid #000;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:3mm}
-      .pdf-c{position:absolute;width:8mm;height:8mm;background:#000}
-      .pdf-c-tl{top:0;left:0;clip-path:polygon(0 0,100% 0,0 100%)}
-      .pdf-c-tr{top:0;right:0;clip-path:polygon(0 0,100% 0,100% 100%)}
-      .pdf-c-bl{bottom:0;left:0;clip-path:polygon(0 0,0 100%,100% 100%)}
-      .pdf-c-br{bottom:0;right:0;clip-path:polygon(100% 0,0 100%,100% 100%)}
-      .pdf-ust{display:flex;align-items:center;gap:2mm;margin-bottom:1.5mm;width:80%}
-      .pdf-line{flex:1;height:.5px;background:#000}
-      .pdf-dia{font-size:6px;color:#000}
-      .pdf-ad{font-family:'Playfair Display',serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1px}
-      .pdf-bil{font-family:'Playfair Display',serif;font-style:italic;font-size:8px;color:#666;margin-bottom:1mm}
-      .pdf-ayrac{font-size:5px;color:#999;letter-spacing:2px;margin:1mm 0}
-      .pdf-fiyat{font-family:'DM Sans',sans-serif;font-weight:300;font-size:22px;line-height:1}
-      .pdf-birim{font-family:'DM Sans',sans-serif;font-size:7px;color:#666}
-    </style>
-    <div class="pdf-grid">
-      ${liste.map(item => `
-        <div class="pdf-etiket">
-          <div class="pdf-c pdf-c-tl"></div><div class="pdf-c pdf-c-tr"></div>
-          <div class="pdf-c pdf-c-bl"></div><div class="pdf-c pdf-c-br"></div>
-          <div class="pdf-ust"><span class="pdf-line"></span><span class="pdf-dia">&#9670;</span><span class="pdf-line"></span></div>
-          <div class="pdf-ad">${esc(item.ad)}</div>
-          <div class="pdf-bil">${esc(item.bilimsel)}</div>
-          <div class="pdf-ayrac">••••••••••••••••••••</div>
-          <div class="pdf-fiyat">${Number(item.fiyat).toFixed(0)}</div>
-          <div class="pdf-birim">₺/${esc(item.birim || "adet")}</div>
-        </div>
-      `).join("")}
-    </div>`;
-  document.body.appendChild(container);
-
-  html2pdf()
-    .set({
-      margin: [15, 15, 15, 15],
-      filename: "vivora-etiketler.pdf",
-      image: { type: "jpeg", quality: 1 },
-      html2canvas: { scale: 3, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    })
-    .from(container.querySelector(".pdf-grid"))
-    .save()
-    .then(() => document.body.removeChild(container));
+  const win = window.open("", "_blank");
+  if (!win) return alert("Popup engellenmiş, lütfen izin verin.");
+  const html = etiketSayfasiHTML(liste);
+  win.document.write(html + `<script>
+    document.fonts.ready.then(function(){
+      setTimeout(function(){
+        // Kullanıcıya bilgi
+        var info = document.createElement('div');
+        info.id = 'pdf-info';
+        info.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#000;color:#fff;padding:10px 20px;font-family:DM Sans,sans-serif;font-size:14px;z-index:9999;display:flex;align-items:center;justify-content:space-between';
+        info.innerHTML = '<span>Yazdır diyaloğunda <b>"PDF olarak kaydet"</b> seçeneğini seçin</span><button onclick="this.parentElement.remove();window.print()" style="background:#fff;color:#000;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600">PDF Oluştur</button>';
+        document.body.prepend(info);
+      }, 300);
+    });
+  <\/script>
+  <style>@media print{#pdf-info{display:none!important}}</style>`);
+  win.document.close();
 }
 
 // ─── ANA SAYFA ───
@@ -234,7 +248,7 @@ export default function EtiketPage({ onBack }) {
     btn: { padding: "8px 16px", background: "#000", color: "#fff", border: "none", borderRadius: 6, fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 6 },
     btnSm: { background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: 18, padding: "0 4px" },
     row: { display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid #f0f0f0" },
-    grid: { display: "grid", gridTemplateColumns: "repeat(3, 70mm)", gap: "8mm", marginTop: 24 },
+    grid: { display: "grid", gridTemplateColumns: "repeat(2, 70mm)", gap: "8mm", marginTop: 24 },
   };
 
   return (
