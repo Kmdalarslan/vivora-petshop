@@ -183,8 +183,11 @@ export default function App() {
       }
     };
     window.addEventListener("popstate", handlePopState);
-    // İlk sayfa state'i
-    if (!window.history.state) {
+    // Hash ile gizli sayfa erişimi
+    if (window.location.hash === "#etiket") {
+      setPage("etiket");
+      window.history.replaceState({ page: "etiket" }, "");
+    } else if (!window.history.state) {
       window.history.replaceState({ page: "home" }, "");
     }
     return () => window.removeEventListener("popstate", handlePopState);
