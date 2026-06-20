@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ShoppingCart, Search, Home, Grid3X3, Info, MessageCircle, User, BookOpen, Phone, HelpCircle, Tag, ChevronDown, X, Menu, Instagram, Youtube, Heart, MapPin, Package, Edit2, Trash2, Plus, LogOut, Save, ChevronRight } from "lucide-react";
+import { ShoppingCart, Search, Home, Grid3X3, Info, MessageCircle, User, BookOpen, Phone, HelpCircle, Tag, ChevronDown, X, Menu, Instagram, Youtube, Heart, MapPin, Package, Edit2, Trash2, Plus, LogOut, Save, ChevronRight, Fish } from "lucide-react";
 
 // Supabase
 import { supabase } from "./lib/supabase";
@@ -389,6 +389,10 @@ export default function App() {
               <span style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
                 onClick={() => navigate("contact")}>
                 <HelpCircle size={12} /> Yardım
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", opacity: 0.7 }}
+                onClick={() => { setPage("etiket"); window.history.pushState({ page: "etiket" }, ""); }}>
+                <Fish size={12} /> Etiket
               </span>
             </div>
             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -818,6 +822,7 @@ export default function App() {
                 { label: "Blog", action: () => navigate("blog") },
                 { label: "Hakkımızda", action: () => navigate("about") },
                 { label: "İletişim", action: () => navigate("contact") },
+                { label: "Fiyat Etiketi", action: () => { setPage("etiket"); setMobileMenuOpen(false); window.history.pushState({ page: "etiket" }, ""); }, icon: true },
               ].map((item, i) => (
                 <button key={i} onClick={item.action} style={{
                   display: "block", width: "100%", textAlign: "left",
@@ -828,7 +833,7 @@ export default function App() {
                   onMouseEnter={e => e.currentTarget.style.background = COLORS.lightPink}
                   onMouseLeave={e => e.currentTarget.style.background = "none"}
                 >
-                  {item.label}
+                  {item.icon && <Fish size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />}{item.label}
                 </button>
               ))}
             </div>
